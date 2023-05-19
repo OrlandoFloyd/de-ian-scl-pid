@@ -1,0 +1,107 @@
+Control de Temperatura de un Líquido  con PID
+PROGRAM Main
+VAR
+  // Variables de entrada
+  Temperatura: REAL;
+  MargenTemperaturaMin: REAL := 60.0;
+  MargenTemperaturaMax: REAL := 65.0;
+
+  // Variables de salida
+  Valvula1: BOOL;
+  Valvula2: BOOL;
+
+  // Variables del control PID
+  Setpoint: REAL := (MargenTemperaturaMin + MargenTemperaturaMax) / 2.0;
+  Kp: REAL := 0.5;    // Ganancia proporcional
+  Ki: REAL := 0.1;    // Ganancia integral
+  Kd: REAL := 0.2;    // Ganancia derivativa
+  IntegralTerm: REAL := 0.0;
+  LastError: REAL := 0.0;
+
+  // Otras variables
+  Nivel: REAL;
+  NivelDeseadoDeposito2: REAL;
+
+  // Variables auxiliares
+  Error: REAL;
+  ProportionalTerm: REAL;
+  IntegralTerm: REAL;
+  DerivativeTerm: REAL;
+  Output: REAL;
+END_VAR
+
+// Función de control PID
+FUNCTION PIDControl : REAL
+VAR_INPUT
+  Setpoint: REAL;
+  Kp: REAL;
+  Ki: REAL;
+  Kd: REAL;
+  PV: REAL;
+END_VAR
+VAR
+  Error: REAL;
+  ProportionalTerm: REAL;
+  IntegralTerm: REAL;
+  DerivativeTerm: REAL;
+  Output: REAL;
+  LastError: REAL;
+END_VAR
+BEGIN
+  // Cálculo del error
+  Error := Setpoint - PV;
+
+  // Término proporcional
+  ProportionalTerm := Kp * Error;
+
+  // Término integral
+  IntegralTerm := IntegralTerm + Ki * Error;
+
+  // Término derivativo
+  DerivativeTerm := Kd * (Error - LastError);
+
+  // Cálculo de la salida
+  Output := ProportionalTerm + IntegralTerm + DerivativeTerm;
+
+  // Actualización del error anterior
+  LastError := Error;
+
+  // Retorno de la salida del control PID
+  PIDControl := Output;
+END_FUNCTION_BLOCK
+
+// Bloque de programa principal
+BEGIN
+  // Control PID de la temperatura
+  Output := PIDControl(Setpoint, Kp, Ki, Kd, Temperatura);
+
+  // Control de las válvulas según la salida del control PID
+  IF Output > 0.0 THEN
+    Valvula1 := TRUE;    // Abrir válvula 1
+    Valvula2 := TRUE;    // Abrir válvula 2
+  ELSE
+    Valvula1 := FALSE;   // Cerrar válvula 1
+    Valvula2 := FALSE;   // Cerrar válvula 2
+  END_IF;
+
+  // Control del llenado del depósito 2 y la temperatura entre los márgenes
+  IF Temperatura >= MargenTemperaturaMin AND Temperatura <= MargenTemperaturaMax THEN
+    IF Nivel < NivelDeseadoDeposito2 THEN
+      Valvula2 := TRUE;   // Abrir válvula 2
+    ELSE
+      Valvula2 := FALSE;  // Cerrar válvula 2
+    END_IF;
+  ELSE
+    Valvula1 := FALSE;    // Cerrar válvula 1
+    Valvula2 := FALSE;    // Cerrar válvula 2
+  END_IF;
+
+  // Control de temperatura superior a 65 grados
+  IF Temperatura > MargenTemperaturaMax THEN
+    Valvula1 := FALSE;    // Cerrar válvula 1
+    Valvula2 := FALSE;    // Cerrar válvula 2
+    // Otras acciones para controlar la temperatura alta
+  END_IF;
+  
+  // Resto del programa...
+END_PROGRAM
